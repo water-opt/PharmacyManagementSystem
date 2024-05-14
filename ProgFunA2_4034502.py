@@ -249,7 +249,7 @@ def display(record):
     # username validation
     tempName = input('\nEnter the name of the customer or the ID of the customer [e.g. Huong/V3]:')
     if "V" in tempName or "P" in tempName:
-        if 
+        pass
     else:
         while 1:
             if tempName.isalpha():
