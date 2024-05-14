@@ -4,16 +4,16 @@ class Customer:
         self.customerName = customerName
         self.reward = reward
 
-        def get_reward(self):
+        def get_reward():
             pass
 
-        def get_discount(self):
+        def get_discount():
             pass
 
-        def update_reward(self):
+        def update_reward():
             pass
 
-        def display_info(self):
+        def display_info():
             pass
 
 
@@ -71,17 +71,20 @@ class VIPCustomer(BasicCustomer):
         self.discount_rate = new_discount_rate
 
 
-class Product():
+class Product:
     def __init__(self, productID, product_name, product_price):
         self.productID = productID
         self.product_name = product_name
         self.product_price = product_price
 
     def display_info(self):
-        print()
+        print("product id: ", self.productID)
+        print("product name: ", self.product_name)
+        print("product price: ", self.product_price)
+        print("prescription requirement: ")
 
 
-class Order():
+class Order:
     def __init__(self, customer, product, quantity):
         self.customer = customer
         self.product = product
@@ -91,7 +94,7 @@ class Order():
         return
 
 
-class Records():
+class Records:
     def __init__(self):
         self.customers = {}
         self.products = {}
@@ -106,7 +109,7 @@ class Records():
         with open(file_name, 'r') as file:
             rows = file.readlines()
 
-            if rows == None:
+            if rows is None:
                 return 404
             else:
                 for row in rows:
@@ -130,7 +133,7 @@ class Records():
         with open(file_name, 'r') as file:
             rows = file.readlines()
 
-            if rows == None:
+            if rows is None:
                 return 404
             else:
                 for row in rows:
@@ -224,8 +227,6 @@ productDict = {}
 
 
 def display(record):
-    product = 'null'
-    quantity = 0
     name = 'null'
     prescriptionList = []
     VIPList = []
@@ -246,79 +247,82 @@ def display(record):
         prescriptionList.extend(details["prescription"])
 
     # username validation
-    tempName = input('\nEnter the name of the customer [e.g. Huong]:')
-    while 1:
-        if tempName.isalpha():
-            name = tempName
-            break
-        else:
-            print('Please enter a valid name.')
-            tempName = input('Enter the name of the customer [e.g. Huong]:')
-            continue
-
-    if name in VIPList:
-        VCustomer = record.find_customer(name)
-        customer = VCustomer
+    tempName = input('\nEnter the name of the customer or the ID of the customer [e.g. Huong/V3]:')
+    if "V" in tempName or "P" in tempName:
+        if 
     else:
-        BasCustomer = record.find_customer(name)
-        customer = BasCustomer
+        while 1:
+            if tempName.isalpha():
+                name = tempName
+                break
+            else:
+                print('Please enter a valid name.')
+                tempName = input('Enter the name of the customer [e.g. Huong]:')
+                continue
 
-    # check whether the name exists in the dictionary
-    # for customerID, details in customersDict.items():
-    #     if name not in details["name"]:
-    #         details["name"] = 0
+        if name in VIPList:
+            VCustomer = record.find_customer(name)
+            customer = VCustomer
+        else:
+            BasCustomer = record.find_customer(name)
+            customer = BasCustomer
 
-    while True:
-        tempProducts = input('Enter the product [enter a valid product only, e.g. vitaminC, coldTablet]: ')
-        tempProductList = [product.strip() for product in tempProducts.split(",")]
+        # check whether the name exists in the dictionary
+        # for customerID, details in customersDict.items():
+        #     if name not in details["name"]:
+        #         details["name"] = 0
 
-        Valid = True
-        productNameList = []
+        while True:
+            tempProducts = input('Enter the product [enter a valid product only, e.g. vitaminC, coldTablet]: ')
+            tempProductList = [product.strip() for product in tempProducts.split(",")]
 
-        for productID, details in productDict.items():
-            productNameList.append(details["name"])
+            Valid = True
+            productNameList = []
 
-        for tempProduct in tempProductList:
-            if tempProduct not in productNameList:
-                print(f'The product {tempProduct} is not valid. Please enter a valid product list.')
-                Valid = False
+            for productID, details in productDict.items():
+                productNameList.append(details["name"])
+
+            for tempProduct in tempProductList:
+                if tempProduct not in productNameList:
+                    print(f'The product {tempProduct} is not valid. Please enter a valid product list.')
+                    Valid = False
+                    break
+
+            if Valid:
+                productList = tempProductList
                 break
 
-        if Valid:
-            productList = tempProductList
-            break
+        while True:
+            quantities = input('Enter the quantities [enter positive integers only, e.g. 1, 2, 3, 4]:')
+            tempQuantityList = [quantity.strip() for quantity in quantities.split(",")]
 
-    while True:
-        quantities = input('Enter the quantities [enter positive integers only, e.g. 1, 2, 3, 4]:')
-        tempQuantityList = [quantity.strip() for quantity in quantities.split(",")]
+            Valid = True
 
-        Valid = True
-
-        for tempQuantity in tempQuantityList:
-            quantity = int(tempQuantity)
-            if quantity < 0 or quantity == 0:
-                print('Enter a valid quantity [quantities cannot be negative or 0]')
-                Valid = False
+            for tempQuantity in tempQuantityList:
+                quantity = int(tempQuantity)
+                if quantity < 0 or quantity == 0:
+                    print('Enter a valid quantity [quantities cannot be negative or 0]')
+                    Valid = False
+                    break
+            if Valid:
+                quantityList = tempQuantityList
                 break
-        if Valid:
-            quantityList = tempQuantityList
-            break
 
-    for product in productList:
-        if product in prescriptionList:
-            while True:
-                # answer check
-                tempAnswer = input(f"The product {product} requires a doctor' prescription, do you have one? (y/n): ")
-                if tempAnswer == 'n':
-                    quantityList.pop(productList.index(product))
-                    productList.remove(product)
-                    break
-                elif tempAnswer == 'y':
-                    break
-                else:
-                    print('Invalid input. Please enter either "y" or "n".')
+        for product in productList:
+            if product in prescriptionList:
+                while True:
+                    # answer check
+                    tempAnswer = input(f"The product {product} requires a doctor' prescription, do you have one? (y/n): ")
+                    if tempAnswer == 'n':
+                        quantityList.pop(productList.index(product))
+                        productList.remove(product)
+                        break
+                    elif tempAnswer == 'y':
+                        break
+                    else:
+                        print('Invalid input. Please enter either "y" or "n".')
 
-    inputFunc(productList, name, quantityList, customer)
+        inputFunc(productList, name, quantityList, customer)
 
 
 selectionDict = {
@@ -344,7 +348,7 @@ def menu():
 
         while True:
             # features
-            print('\nWelcome to the RMIT pharmacy!\n')
+            print('\nWelcome to the R.M.I.T pharmacy!\n')
             print('###################################################################')
             print('You can choose from the following options:')
             print('1. Make a purchase')
@@ -371,110 +375,112 @@ def menu():
             else:
                 print('Invalid selection.')
 
+            # # order history
+            # orderDict = {
+            #     "Tom": {
+            #         "orders": [
+            #             {
+            #                 "products": {"vitaminC": 1},
+            #                 "total": 12.0,
+            #                 "earnedRewards": 12
+            #             },
+            #             {
+            #                 "products": {"fragrance": 1, "vitaminE": 2},
+            #                 "total": 54.0,
+            #                 "earnedRewards": 54
+            #             },
+            #             {
+            #                 "products": {"coldTablet": 3, "vitaminC": 1},
+            #                 "total": 31.2,
+            #                 "earnedRewards": 31
+            #             }
+            #         ]
+            #     }
+            # }
+            #
+            # # initial customers
+            # customersDict = {
+            #     "Kate": 120,
+            #     "Tom": 32,
+            # }
+            #
 
-# # order history
-# orderDict = {
-#     "Tom": {
-#         "orders": [
-#             {
-#                 "products": {"vitaminC": 1},
-#                 "total": 12.0,
-#                 "earnedRewards": 12
-#             },
-#             {
-#                 "products": {"fragrance": 1, "vitaminE": 2},
-#                 "total": 54.0,
-#                 "earnedRewards": 54
-#             },
-#             {
-#                 "products": {"coldTablet": 3, "vitaminC": 1},
-#                 "total": 31.2,
-#                 "earnedRewards": 31
-#             }
-#         ]
-#     }
-# }
-#
-# # initial customers
-# customersDict = {
-#     "Kate": 120,
-#     "Tom": 32,
-# }
-#
+            #
+            # # product add/ update
+            # def manageProducts():
+            #     while True:
+            #         productsInput = input(
+            #             "Enter the products, prices, and the doctor's prescription requirements
+            #             [e.g., toothpaste 5.2 n, shampoo 8.2 n]: ")
+            #         productsDataList = [item.strip() for item in productsInput.split(',')]
+            #
+            #         # prices validity
+            #         pricesIsValid = True
+            #
+            #         for productData in productsDataList:
+            #             product, price, prescription = [item.strip() for item in productData.split(' ')]
+            #
+            #             # price validation [price > 0]
+            #             try:
+            #                 price = float(price)
+            #                 if price <= 0:
+            #                     pricesIsValid = False
+            #                     break
+            #             except ValueError:
+            #                 pricesIsValid = False
+            #                 break
+            #
+            #             # prescription requirement validation ['y' or 'n']
+            #             if prescription.lower() not in ['y', 'n']:
+            #                 pricesIsValid = False
+            #                 break
+            #
+            #         prescriptionList = productDict["prescription"]
+            #
+            #         if pricesIsValid:
+            #             for productData in productsDataList:
+            #                 product, price, prescription = [item.strip() for item in productData.split(' ')]
+            #
+            #                 if product in productDict:
+            #                     productDict[product] = price
+            #                     if prescription.lower() == 'y':
+            #                         prescriptionList.append(product)
+            #                 else:
+            #                     productDict[product] = price
+            #                     if prescription.lower() == 'y':
+            #                         prescriptionList.append(product)
+            #
+            #             productDict["prescription"] = prescriptionList
+            #             print("\nInformation updated.\n")
+            #             break
+            #         else:
+            #             print(
+            #                 "\nInvalid input. Valid inputs. [prices should be greater than o and
+            #                 prescription requirement should be 'n' or 'y']")
+            #             continue
 
-#
-# # product add/ update
-# def manageProducts():
-#     while True:
-#         productsInput = input(
-#             "Enter the products, prices, and the doctor's prescription requirements
-#             [e.g., toothpaste 5.2 n, shampoo 8.2 n]: ")
-#         productsDataList = [item.strip() for item in productsInput.split(',')]
-#
-#         # prices validity
-#         pricesIsValid = True
-#
-#         for productData in productsDataList:
-#             product, price, prescription = [item.strip() for item in productData.split(' ')]
-#
-#             # price validation [price > 0]
-#             try:
-#                 price = float(price)
-#                 if price <= 0:
-#                     pricesIsValid = False
-#                     break
-#             except ValueError:
-#                 pricesIsValid = False
-#                 break
-#
-#             # prescription requirement validation ['y' or 'n']
-#             if prescription.lower() not in ['y', 'n']:
-#                 pricesIsValid = False
-#                 break
-#
-#         prescriptionList = productDict["prescription"]
-#
-#         if pricesIsValid:
-#             for productData in productsDataList:
-#                 product, price, prescription = [item.strip() for item in productData.split(' ')]
-#
-#                 if product in productDict:
-#                     productDict[product] = price
-#                     if prescription.lower() == 'y':
-#                         prescriptionList.append(product)
-#                 else:
-#                     productDict[product] = price
-#                     if prescription.lower() == 'y':
-#                         prescriptionList.append(product)
-#
-#             productDict["prescription"] = prescriptionList
-#             print("\nInformation updated.\n")
-#             break
-#         else:
-#             print(
-#                 "\nInvalid input. Valid inputs. [prices should be greater than o and
-#                 prescription requirement should be 'n' or 'y']")
-#             continue
+            #
+            # def orderHistory():
+            #     # user name input
+            #     name = input("Enter the name of the user: ")
+            #     print(f'\nThis is the order history of {name}')
+            #
+            #     # checking the name given as an input
+            #     if name in orderDict:
+            #         orders = orderDict[name]["orders"]
+            #
+            #         # formatting the history
+            #         print('\t\t\tProducts\t\t\t\t\t\tTotal Cost\t\t\t\tEarned Rewards')
+            #         for i, orderDetails in enumerate(orders, start=1):
 
-#
-# def orderHistory():
-#     # user name input
-#     name = input("Enter the name of the user: ")
-#     print(f'\nThis is the order history of {name}')
-#
-#     # checking the name given as an input
-#     if name in orderDict:
-#         orders = orderDict[name]["orders"]
-#
-#         # formatting the history
-#         print('\t\t\tProducts\t\t\t\t\t\tTotal Cost\t\t\t\tEarned Rewards')
-#         for i, orderDetails in enumerate(orders, start=1):
             """ productsDisplay = ", ".join([f"{quantity} x {product}" for product, quantity in 
                orderDetails["products"].items()])
             print(f"Order {i:<5} {productsDisplay:<31} Total Cost: {orderDetails['total']:<11} Earned Rewards: 
             {orderDetails['earnedRewards']}")
            print(f"Order {i} {productsDisplay}, Total Cost: {orderDetails['total']}, Earned Rewards: 
            {orderDetails['earnedRewards']}") """
+
+
 #     else:
 #         print(f"No order history exists for user - {name}")
 #
@@ -485,13 +491,12 @@ def calcTotal(product, quantity):
     for productID, details in productDict.items():
         if details["name"] == product:
             price = float(details["price"])
-            total = price*quantity
+            total = price * quantity
             return round(total, 2)
 
 
 def inputFunc(productList, name, quantityList, customer):
     subTotal = 0
-    totalRewards = 0
     subTotalFloat = 0.0
     productStoreNewDict = {}
 
@@ -553,5 +558,5 @@ def inputFunc(productList, name, quantityList, customer):
 #
 #     return rewardCash
 #
-#calling display function
+
 menu()
