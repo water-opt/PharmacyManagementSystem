@@ -1,4 +1,4 @@
-class Customer():
+class Customer:
     def __init__(self, customerID, customerName, reward):
         self.customerID = customerID
         self.customerName = customerName
@@ -25,11 +25,11 @@ class BasicCustomer(Customer):
         if reward_rate is None:
             self.reward_rate = BasicCustomer.default_reward_rate
         else:
-            self.rewardRate = reward_rate
+            self.reward_rate = reward_rate
 
     def get_reward(self, total_cost):
-        self.reward = round(total_cost * self.reward_rate)
-        return round(total_cost * self.reward_rate)
+        self.reward = round(total_cost * float(self.reward_rate))
+        return self.reward
 
     def update_reward(self, value):
         self.reward = (self.reward + value)
@@ -45,7 +45,7 @@ class VIPCustomer(BasicCustomer):
     default_discount_rate = 0.08
 
     def __init__(self, customerID, customerName, reward, reward_rate, discount_rate):
-        super().__init__(customerID, customerName, reward)
+        super().__init__(customerID, customerName, reward, reward_rate)
         if reward_rate is None:
             self.reward_rate = self.default_reward_rate
         else:
@@ -57,10 +57,12 @@ class VIPCustomer(BasicCustomer):
             self.discount_rate = discount_rate
 
     def get_discount(self, total_cost):
-        return total_cost - (total_cost * self.discount_rate)
+        discount = total_cost * float(self.discount_rate)
+        return round(float(discount))
 
     def get_reward(self, total_cost):
-        return (total_cost - (total_cost * self.discount_rate)) * self.reward_rate
+        reward = total_cost - (total_cost * float(self.discount_rate)) * float(self.reward_rate)
+        return round(float(reward))
 
     def display_info(self):
         pass
@@ -146,26 +148,43 @@ class Records():
                 return self.products
 
     def find_customer(self, value):
-        if "V" or "B" in value:
+        if "V" in value or "B" in value:
             customer = self.customers.get(value)
-            print(
-                "{:<15} {:<20} {:<15} {:<15} {:<10}".format(str(value), customer["name"], str(customer["reward rate"]),
-                                                            str(customer["discount rate"]), str(customer["rewards"])))
+            if "V" in customer["customerID"]:
+                NewCustomer = VIPCustomer(customer["customerID"], customer["name"], customer["rewards"],
+                                          customer["reward rate"], customer["discount rate"])
+            else:
+                NewCustomer = BasicCustomer(customer["customerID"], customer["name"], customer["rewards"],
+                                            customer["reward rate"])
+
+            return NewCustomer
+
+            # print( "{:<15} {:<20} {:<15} {:<15} {:<10}".format(str(value), customer["name"], str(customer["reward
+            # rate"]), str(customer["discount rate"]), str(customer["rewards"])))
         else:
             for customer_ID, info in self.customers.items():
-                customerID = customer_ID
-                name = info["name"]
-                rewardRate = info["reward rate"]
-                discountRate = info["discount rate"]
-                rewards = info["rewards"]
+                if info["name"] == value:
+                    customerID = customer_ID
+                    name = value
+                    rewardRate = info["reward rate"]
+                    rewards = info["rewards"]
 
-                print("{:<15} {:<20} {:<15} {:<15} {:<10}".format(str(customerID), name, str(rewardRate),
-                                                                  str(discountRate), str(rewards)))
+                    if "V" in customerID:
+                        discountRate = info["discount rate"]
+                        NewCustomer = VIPCustomer(customerID, name, rewards, rewardRate, discountRate)
+                    else:
+                        NewCustomer = BasicCustomer(customerID, name, rewards, rewardRate)
+
+                    return NewCustomer
+
+                    # print("{:<15} {:<20} {:<15} {:<15} {:<10}".format(str(customerID), name, str(rewardRate),
+                    #                                               str(discountRate), str(rewards)))
 
     def find_product(self, value):
         if len(value) >= 3:
             for product_ID, info in self.products.items():
-                print(f'{info["name"].ljust(20)} {str(info["price"]).rjust(10)}')
+                if info["name"] == value:
+                    print(f'{value.ljust(20)} {str(info["price"]).rjust(10)}')
         else:
             product = self.products.get(value)
             print(f'{product["name"].ljust(20)} {str(product["price"]).rjust(10)}')
@@ -204,12 +223,22 @@ customersDict = {}
 productDict = {}
 
 
-#data input
-def display():
+def display(record):
     product = 'null'
     quantity = 0
     name = 'null'
     prescriptionList = []
+    VIPList = []
+    BasicList = []
+
+    for customerID, details in customersDict.items():
+        if "V" in customerID:
+            VIPList.append(details["name"])
+        else:
+            BasicList.append(details["name"])
+
+    # print(VIPList)
+    # print(BasicList)
 
     # saving the products that need a prescription in a list
     for productID, details in productDict.items():
@@ -227,10 +256,17 @@ def display():
             tempName = input('Enter the name of the customer [e.g. Huong]:')
             continue
 
+    if name in VIPList:
+        VCustomer = record.find_customer(name)
+        customer = VCustomer
+    else:
+        BasCustomer = record.find_customer(name)
+        customer = BasCustomer
+
     # check whether the name exists in the dictionary
-    for customerID, details in customersDict.items():
-        if name not in details["name"]:
-            details["name"] = 0
+    # for customerID, details in customersDict.items():
+    #     if name not in details["name"]:
+    #         details["name"] = 0
 
     while True:
         tempProducts = input('Enter the product [enter a valid product only, e.g. vitaminC, coldTablet]: ')
@@ -253,7 +289,7 @@ def display():
             break
 
     while True:
-        quantities = input('Énter the quantities [enter positive integers only, e.g. 1, 2, 3, 4]:')
+        quantities = input('Enter the quantities [enter positive integers only, e.g. 1, 2, 3, 4]:')
         tempQuantityList = [quantity.strip() for quantity in quantities.split(",")]
 
         Valid = True
@@ -282,11 +318,10 @@ def display():
                 else:
                     print('Invalid input. Please enter either "y" or "n".')
 
-    # inputFunc(productList, name, quantityList)
+    inputFunc(productList, name, quantityList, customer)
 
 
 selectionDict = {
-    1: display,
     # 2:manageProducts,
     # 5:orderHistory
 }
@@ -325,6 +360,8 @@ def menu():
 
             if option == 0:
                 break  # Exit the loop and the program
+            elif option == 1:
+                display(record)
             elif option == 3:
                 record.list_customers()
             elif option == 4:
@@ -370,7 +407,8 @@ def menu():
 # def manageProducts():
 #     while True:
 #         productsInput = input(
-#             "Enter the products, prices, and the doctor's prescription requirements [e.g., toothpaste 5.2 n, shampoo 8.2 n]: ")
+#             "Enter the products, prices, and the doctor's prescription requirements
+#             [e.g., toothpaste 5.2 n, shampoo 8.2 n]: ")
 #         productsDataList = [item.strip() for item in productsInput.split(',')]
 #
 #         # prices validity
@@ -414,7 +452,8 @@ def menu():
 #             break
 #         else:
 #             print(
-#                 "\nInvalid input. Valid inputs. [prices should be greater than o and prescription requirement should be 'n' or 'y']")
+#                 "\nInvalid input. Valid inputs. [prices should be greater than o and
+#                 prescription requirement should be 'n' or 'y']")
 #             continue
 
 #
@@ -430,76 +469,79 @@ def menu():
 #         # formatting the history
 #         print('\t\t\tProducts\t\t\t\t\t\tTotal Cost\t\t\t\tEarned Rewards')
 #         for i, orderDetails in enumerate(orders, start=1):
-#             productsDisplay = ", ".join([f"{quantity} x {product}" for product, quantity in orderDetails["products"].items()])
-#             print(f"Order {i:<5} {productsDisplay:<31} Total Cost: {orderDetails['total']:<11} Earned Rewards: {orderDetails['earnedRewards']}")
-#             # print(f"Order {i} {productsDisplay}, Total Cost: {orderDetails['total']}, Earned Rewards: {orderDetails['earnedRewards']}")
+            """ productsDisplay = ", ".join([f"{quantity} x {product}" for product, quantity in 
+               orderDetails["products"].items()])
+            print(f"Order {i:<5} {productsDisplay:<31} Total Cost: {orderDetails['total']:<11} Earned Rewards: 
+            {orderDetails['earnedRewards']}")
+           print(f"Order {i} {productsDisplay}, Total Cost: {orderDetails['total']}, Earned Rewards: 
+           {orderDetails['earnedRewards']}") """
 #     else:
 #         print(f"No order history exists for user - {name}")
 #
 # selection navigation
 
 
-# #total calculation
-# def calcTotal(product, quantity):
-#     total = productDict[product] * int(quantity)
-#     return total
-#
-# #save new rewards amount calculation
-# def saveRewards(customer, total):
-#     customersDict[customer] = customersDict[customer] + total
-#
-# #calculations callings
-# def inputFunc(productList, name, quantityList):
-#     subTotal = 0
-#     totalRewards = 0
-#     productStoreNewDict = {}
-#     #display
-#     print('--------------------------------')
-#     print('\t\t\tReceipt')
-#     print('--------------------------------')
-#
-#     for i in range(len(productList)):
-#         product = str(productList[i])
-#         quantity = int(quantityList[i])
-#
-#         #store products and quantity dictionary temporary for storing
-#         productStoreNewDict[product] = quantity
-#
-#         # calling rewards and total calculation functions
-#         total = calcTotal(product, quantity)
-#
-#         subTotal += total
-#
-#         #display
-#         print(f'Name:\t\t\t\t{name}')
-#         print(f'Product:\t\t\t{product}')
-#         print(f'Unit Price:\t\t\t{productDict[product]} (AUD)')
-#         print(f'Quantity:\t\t\t{quantity}')
-#
-#     if customersDict[name] >= 100:
-#         cashToBeDeducted = float(rewardToCash(name))
-#         finalAmount = subTotal - cashToBeDeducted
-#     else:
-#         finalAmount = subTotal
-#
-#     totalRewards = round(subTotal)
-#     saveRewards(name, totalRewards)
-#
-#     print('--------------------------------')
-#     print(f'Total cost:\t\t\t{finalAmount} (AUD)')
-#     print(f'Earned reward:\t\t{totalRewards}\n')
-#
-#     order = {
-#         "products": productStoreNewDict,
-#         "total": float(finalAmount),
-#         "earnedRewards": int(totalRewards)
-#     }
-#
-#     if name in orderDict:
-#         orderDict[name]["orders"].append(order)
-#     else:
-#         orderDict[name] = {"orders": [order]}
-#
+def calcTotal(product, quantity):
+    for productID, details in productDict.items():
+        if details["name"] == product:
+            price = float(details["price"])
+            total = price*quantity
+            return round(total, 2)
+
+
+def inputFunc(productList, name, quantityList, customer):
+    subTotal = 0
+    totalRewards = 0
+    subTotalFloat = 0.0
+    productStoreNewDict = {}
+
+    print('----------------------------------')
+    print('\t\t\tReceipt')
+    print('----------------------------------')
+
+    for i in range(len(productList)):
+        product = str(productList[i])
+        quantity = int(quantityList[i])
+
+        productStoreNewDict[product] = quantity
+
+        total = calcTotal(product, quantity)
+
+        subTotal += total
+        subTotalFloat = float(subTotal)
+
+        print(f'Name:\t\t\t\t{name}')
+        print(f'Product:\t\t\t{product}')
+        # print(f'Unit Price:\t\t\t{productDict[product]} (AUD)')
+        print(f'Quantity:\t\t\t{quantity}')
+        print("----------------------------------")
+
+    if isinstance(customer, VIPCustomer):
+        vipCustomerDiscount = customer.get_discount(subTotalFloat)
+        vipCustomerRewards = customer.get_reward(subTotalFloat)
+        print('----------------------------------')
+        print(f'Original cost:\t\t\t{subTotalFloat} (AUD)')
+        print(f'Discount:\t\t\t\t{vipCustomerDiscount}')
+        print(f'Total cost:\t\t\t\t{subTotalFloat - vipCustomerDiscount} (AUD)')
+        print(f'Earned rewards:\t\t\t{vipCustomerRewards}')
+    else:
+        basicCustomerRewards = customer.get_reward(subTotalFloat)
+        print('----------------------------------')
+        print(f'Total cost:\t\t\t{subTotalFloat} (AUD)')
+        print(f'Earned reward:\t\t{basicCustomerRewards}\n')
+
+    # order = {
+    #     "products": productStoreNewDict,
+    #     "total": float(finalAmount),
+    #     "earnedRewards": int(totalRewards)
+    # }
+    #
+    # if name in orderDict:
+    #     orderDict[name]["orders"].append(order)
+    # else:
+    #     orderDict[name] = {"orders": [order]}
+
+
 # # reward points to cash
 # def rewardToCash(name):
 #     rewards = customersDict[name]
