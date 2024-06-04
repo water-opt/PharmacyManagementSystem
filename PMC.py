@@ -349,8 +349,9 @@ def display(record):
         customer = BasCustomer
     else:
         print("\ncreating new user ..\n")
-        customersDict[f"B{maxIdNumber}"] = {"name": name, "reward rate": 1, "rewards": 0}
+        customersDict[f"B{maxIdNumber}"] = {"name": name, "reward rate": 1, "discount rate": 0, "rewards": 0}
         customer = BasicCustomer(f"B{maxIdNumber}", name, 0, 1)
+        # print(customersDict)
 
     while True:
         tempProducts = input('Enter the product [enter a valid product only, e.g. vitaminC, coldTablet]: ')
@@ -485,9 +486,12 @@ def adjustDiscountRateVip():
 
     DiscountRate = validateRate()
 
+    # print(DiscountRate)
+
     for customerID, details in customersDict.items():
-        if "V" in customerID and details["name"] == name:
-            customersDict[customerID]["discount rate"] = DiscountRate
+        if details["name"] == name:
+            # print(details["name"])
+            details["discount rate"] = DiscountRate
 
 
 def displayOrders():
@@ -623,18 +627,27 @@ def save_customers_to_file(file_name):
 
 
 def manageProducts():
+    global productTemp, priceTemp, prescriptionTemp
+    # print(productDict)
     maxIdNumber = 0
-    maxKey = 0
-    product = ""
-    price = 0.00
-    prescription = ""
 
     for key in productDict.keys():
         if key.startswith('P') and key[1:].isdigit():
             number = int(key[1:])
             if number > maxIdNumber:
                 maxIdNumber = number
-                maxKey = key
+
+    def validate_price(priceValidate):
+        try:
+            return float(priceValidate)
+        except ValueError:
+            raise ValueError(f"Invalid price: {priceValidate}")
+
+    def validate_prescription(prescriptionValidate):
+        if prescriptionValidate.lower() in ['y', 'n']:
+            return prescriptionValidate.lower()
+        else:
+            raise ValueError(f"Invalid prescription flag: {prescriptionValidate}")
 
     while True:
         productsInput = input(
@@ -642,35 +655,31 @@ def manageProducts():
             "shampoo 8.2 n]: ")
         productsDataList = [item.strip() for item in productsInput.split(',')]
 
-        def validate_price(priceValidate):
-            try:
-                priceValidate = float(priceValidate)
-                return priceValidate
-            except ValueError:
-                raise ValueError(f"Invalid price: {priceValidate}")
+        try:
+            for productData in productsDataList:
+                productTemp, priceTemp, prescriptionTemp = [item.strip() for item in productData.split(' ')]
 
-        def validate_prescription(prescriptionValidate):
-            if prescriptionValidate.lower() in ['y', 'n']:
-                return prescriptionValidate.lower()
-            else:
-                raise ValueError(f"Invalid prescription flag: {prescriptionValidate}")
-
-        for productData in productsDataList:
-            productTemp, priceTemp, prescriptionTemp = [item.strip() for item in productData.split(' ')]
-
-            try:
-                product = productTemp
+                product = str(productTemp)
                 price = validate_price(priceTemp)
                 prescription = validate_prescription(prescriptionTemp)
 
-                for productID, details in productDict:
+                productUpdated = False
+                for productID, details in productDict.items():
                     if details["name"] == product:
                         productDict[productID] = {"name": product, "price": price, "prescription": prescription}
-                    else:
-                        productDict[f"P{maxIdNumber + 1}"] = {"name": product, "price": price,
-                                                              "prescription": prescription}
-            except ValueError as e:
-                print(e)
+                        productUpdated = True
+                        break
+
+                if not productUpdated:
+                    maxIdNumber += 1
+                    productDict[f"P{maxIdNumber}"] = {"name": product, "price": price, "prescription": prescription}
+
+            # Break the loop if input is successfully processed
+            break
+        except ValueError as e:
+            print(e)
+
+    # print(productDict)
 
 
 def calcTotal(product, quantity):
