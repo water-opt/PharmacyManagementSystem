@@ -1,3 +1,7 @@
+# Hareen Dilruksha Nanayakkara
+# 4034502
+# HD Level
+
 from datetime import datetime
 
 
@@ -109,6 +113,7 @@ class Records:
     def get_products_list(self):
         return self.products
 
+    # reads orders data file and store it in a dictionary
     def read_orders(self, file_name):
         try:
             with open(file_name, 'r') as file:
@@ -145,6 +150,7 @@ class Records:
 
             return self.orders
 
+    # reads customers data file and store it in a dictionary
     def read_customers(self, file_name):
         try:
             with open(file_name, 'r') as file:
@@ -171,6 +177,7 @@ class Records:
                                               "discount rate": discountRate, "rewards": rewards}
         return self.customers
 
+    # reads products data file and store it in a dictionary
     def read_products(self, file_name):
         try:
             with open(file_name, 'r') as file:
@@ -201,6 +208,7 @@ class Records:
 
             return self.products
 
+    # takes a value which can be an ID or a name which helps to search and retrieve data and return the customer object
     def find_customer(self, value):
         if "V" in value or "B" in value:
             customer = self.customers.get(value)
@@ -228,6 +236,7 @@ class Records:
 
                     return NewCustomer
 
+    # takes a value which can be an ID or a name which helps to search and retrieve data and return product data
     def find_product(self, value):
         if len(value) >= 3:
             for product_ID, info in self.products.items():
@@ -237,6 +246,7 @@ class Records:
             product = self.products.get(value)
             print(f'{product["name"].ljust(20)} {str(product["price"]).rjust(10)}')
 
+    # list of customers which read from the file
     def list_customers(self):
         print('\n#############################################################')
         print('\t\t\tCustomers')
@@ -254,6 +264,7 @@ class Records:
 
         print('\n')
 
+    # list of products which read from the file
     def list_products(self):
         print('\n################################')
         print('\t\t\tProducts')
@@ -277,6 +288,8 @@ productDict = {}
 ordersDict = {}
 
 
+# this is the place order function which takes product name/ID, username/ID and quantity as inputs, store them and
+# pass to another function
 def display(record):
     global tempID, customer
     name = 'null'
@@ -307,15 +320,11 @@ def display(record):
         else:
             BasicList.append(details["name"])
 
-    # print(VIPList)
-    # print(BasicList)
-
     # saving the products that need a prescription in a list
     for productID in productDict:
         if "P" in productID:
             dataDict = productDict[productID]
             presRequirement = dataDict["prescription"]
-            # print(presRequirement)
 
             if presRequirement == 'y':
                 prescriptionList.append(dataDict["name"])
@@ -341,17 +350,17 @@ def display(record):
                 tempName = input('Enter the name of the customer [e.g. Huong]:')
                 continue
 
+    # creating customer objects depending on their status VIP/Basic
     if name in VIPList:
         VCustomer = record.find_customer(name)
         customer = VCustomer
     elif name in BasicList:
         BasCustomer = record.find_customer(name)
         customer = BasCustomer
-    else:
+    else:  # if user not found creating a new user
         print("\ncreating new user ..\n")
         customersDict[f"B{maxIdNumber}"] = {"name": name, "reward rate": 1, "discount rate": 0, "rewards": 0}
         customer = BasicCustomer(f"B{maxIdNumber}", name, 0, 1)
-        # print(customersDict)
 
     while True:
         tempProducts = input('Enter the product [enter a valid product only, e.g. vitaminC, coldTablet]: ')
@@ -366,6 +375,7 @@ def display(record):
             productIDList.append(productID)
             productNameList.append(details["name"])
 
+        # product name/ID validation
         for tempProduct in tempProductList:
             if "B" in tempProduct or "P" in tempProduct:
                 if tempProduct not in productIDList:
@@ -394,6 +404,7 @@ def display(record):
 
         Valid = True
 
+        # quantity validation
         for tempQuantity in tempQuantityList:
             quantity = int(tempQuantity)
             if quantity < 0 or quantity == 0:
@@ -409,6 +420,7 @@ def display(record):
             if pName == bundleItem:
                 bundleListInOrder.append(pName)
 
+    # prescription requirement
     for product in productList[:]:
         if product in prescriptionList:
             while True:
@@ -425,11 +437,10 @@ def display(record):
                     print("Invalid input. Please enter 'y' or 'n'.")
                     break
 
-    # print(bundleListInOrder)
-
     inputFunc(productList, name, quantityList, customer)
 
 
+# takes customer name/ID as input and displays their order history
 def searchCustomerOrder():
     identifierInput = ""
 
@@ -451,7 +462,7 @@ def searchCustomerOrder():
     print("{:<10} {:<30} {:<15} {:<15}".format("Order 1", product_list, total_cost, earned_rewards))
 
 
-# selection menu for the functions
+# takes customer name/ID, new discount rate as inputs and updates them
 def adjustDiscountRateVip():
     name = ""
     DiscountRate = 0.0
@@ -470,6 +481,7 @@ def adjustDiscountRateVip():
                 tempName = input('Enter the name of the customer [e.g. Huong]:')
                 continue
 
+    # discount rate validation
     def validateRate():
         while True:
             try:
@@ -486,14 +498,12 @@ def adjustDiscountRateVip():
 
     DiscountRate = validateRate()
 
-    # print(DiscountRate)
-
     for customerID, details in customersDict.items():
         if details["name"] == name:
-            # print(details["name"])
             details["discount rate"] = DiscountRate
 
 
+# this displays all the order history of customers
 def displayOrders():
     print('########################################################################################')
     print('\t\t\t\t\t\t\t\t\tCustomers')
@@ -512,9 +522,11 @@ def displayOrders():
     print('\n########################################################################################')
 
 
+# selection menu for the functions
 def menu():
     record = Records()
 
+    # custom file names if available if not available uses default file names
     cusFile = input("Enter the customers file name: ")
     if not cusFile.strip():
         cusFile = "customers.txt"
@@ -525,6 +537,7 @@ def menu():
     if not ordFile.strip():
         ordFile = "orders.txt"
 
+    # if any file reading error occur
     if (record.read_customers(cusFile)) == 404 or (record.read_products(prodFile)) == 404 or (
             record.read_orders(ordFile)) == 404:
         print("\nFiles not found !!")
@@ -536,10 +549,6 @@ def menu():
         productDict = record.read_products("products.txt")
         customersDict = record.read_customers("customers.txt")
         ordersDict = record.read_orders("orders.txt")
-
-        # print(productDict)
-        # print(customersDict)
-        # print(ordersDict)
 
         while True:
             # features
@@ -564,6 +573,7 @@ def menu():
             option = int(option)
 
             if option == 0:
+                # these will save all the new data to relevant file when exiting the program
                 save_products_to_file(prodFile)
                 save_customers_to_file(cusFile)
                 save_orders_to_file(ordFile)
@@ -586,6 +596,7 @@ def menu():
                 print('\nInvalid selection.')
 
 
+# save new updates and new products added to the file
 def save_products_to_file(file_name):
     with open(file_name, 'w') as file:
         for product_id, details in productDict.items():
@@ -601,6 +612,7 @@ def save_products_to_file(file_name):
             file.write(line)
 
 
+# save new order added to the file
 def save_orders_to_file(file_name):
     with open(file_name, 'w') as file:
         for customer, details in ordersDict.items():
@@ -612,6 +624,7 @@ def save_orders_to_file(file_name):
             file.write(line)
 
 
+# save new updates and new customers added to the file
 def save_customers_to_file(file_name):
     with open(file_name, 'w') as file:
         for customer_id, details in customersDict.items():
@@ -626,6 +639,7 @@ def save_customers_to_file(file_name):
             file.write(line)
 
 
+# update or add new products
 def manageProducts():
     global productTemp, priceTemp, prescriptionTemp
     # print(productDict)
@@ -637,12 +651,14 @@ def manageProducts():
             if number > maxIdNumber:
                 maxIdNumber = number
 
+    # price validation (has to be float convertible)
     def validate_price(priceValidate):
         try:
             return float(priceValidate)
         except ValueError:
             raise ValueError(f"Invalid price: {priceValidate}")
 
+    # prescription validation (has to be only 'y' or 'n')
     def validate_prescription(prescriptionValidate):
         if prescriptionValidate.lower() in ['y', 'n']:
             return prescriptionValidate.lower()
@@ -682,6 +698,7 @@ def manageProducts():
     # print(productDict)
 
 
+# total calculation for normal products
 def calcTotal(product, quantity):
     for productID, details in productDict.items():
         if details["name"] == product:
@@ -690,6 +707,7 @@ def calcTotal(product, quantity):
             return round(total, 2)
 
 
+# total calculation for bundle products
 def bundleTotalCalc(bundle):
     total = 0
     subTotal = 0
@@ -710,6 +728,7 @@ def bundleTotalCalc(bundle):
     return float(subTotal - ((subTotal / 100) * 80))
 
 
+# this function takes data from the display function to generate the invoice
 def inputFunc(productList, name, quantityList, customer):
     current_datetime = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
     normTotal = 0
@@ -717,17 +736,16 @@ def inputFunc(productList, name, quantityList, customer):
     bundleListTemp = {}
     normalProductList = {}
     bundleList = {}
-    # print(productList)
-    # print(quantityList)
 
+    # combining quantityList and productList arrays all together
     product_quantity_dict = {productList[i]: quantityList[i] for i in range(len(productList))}
 
+    # list of bundle products
     for productID, details in productDict.items():
         for productName in productList:
             if details["name"] == productName and "B" in productID:
                 bundleListTemp[details["name"]] = {"items": details["bundle items"]}
 
-    # print(bundleListTemp)
     bundleList = bundleListTemp
 
     print('----------------------------------')
@@ -738,7 +756,6 @@ def inputFunc(productList, name, quantityList, customer):
     for i in range(len(productList)):
         product = str(productList[i])
         quantity = int(quantityList[i])
-        # productStoreNewDict[product] = quantity
 
         if not bundleListTemp:
             normalProductList[product] = {"quantity": quantity}
@@ -753,18 +770,17 @@ def inputFunc(productList, name, quantityList, customer):
         print(f'Quantity:\t\t\t{quantity}')
         print("----------------------------------")
 
-    # print(bundleListTemp)
-    # print(normalProductList)
-
+    # total for normal products
     for normProductName, details in normalProductList.items():
         normTotal += calcTotal(normProductName, details["quantity"])
 
-    # print(normTotal)
-
+    # total for bundle products
     bundleTotal = bundleTotalCalc(bundleList)
 
+    # final subtotal
     subTotalFloat = float(normTotal + bundleTotal)
 
+    # displaying the invoice depending on the user type
     if isinstance(customer, VIPCustomer):
         vipCustomerDiscount = customer.get_discount(subTotalFloat)
         vipCustomerRewards = customer.get_reward(subTotalFloat)
