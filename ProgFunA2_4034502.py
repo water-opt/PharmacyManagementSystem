@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 class Customer:
     def __init__(self, customerID, customerName, reward):
         self.customerID = customerID
@@ -98,6 +101,7 @@ class Records:
     def __init__(self):
         self.customers = {}
         self.products = {}
+        self.orders = {}
 
     def get_customer_list(self):
         return self.customers
@@ -105,50 +109,97 @@ class Records:
     def get_products_list(self):
         return self.products
 
+    def read_orders(self, file_name):
+        try:
+            with open(file_name, 'r') as file:
+                rows = file.readlines()
+        except FileNotFoundError:
+            return 404
+
+        if rows is None:
+            return 404
+        else:
+            for row in rows:
+                column = row.strip().split(", ")
+                rowLength = len(column)
+                identifier = column[0]
+                orderItems = {}
+                orderArray = []
+                quantity = []
+
+                for i in range(1, rowLength - 3):
+                    if "P" in column[i] or "B" in column[i] or column[i].isalpha():
+                        orderArray.append(column[i])
+                    elif column[i].isdigit():
+                        quantity.append(column[i])
+
+                total = column[rowLength - 3]
+                rewards = column[rowLength - 2]
+                dateTime = column[rowLength - 1]
+
+                for i in range(len(orderArray)):
+                    orderItems[orderArray[i]] = quantity[i]
+
+                self.orders[identifier] = {"items": orderItems, "total": total,
+                                           "rewards": rewards, "dateTime": str(dateTime)}
+
+            return self.orders
+
     def read_customers(self, file_name):
-        with open(file_name, 'r') as file:
-            rows = file.readlines()
+        try:
+            with open(file_name, 'r') as file:
+                rows = file.readlines()
+        except FileNotFoundError:
+            return 404
 
-            if rows is None:
-                return 404
-            else:
-                for row in rows:
-                    column = row.strip().split(", ")
-                    customerID = column[0]
-                    customerName = column[1]
-                    rewardRate = column[2]
-                    if "V" in customerID:
-                        discountRate = column[3]
-                        rewards = column[4]
-                    else:
-                        discountRate = 0
-                        rewards = column[3]
+        if rows is None:
+            return 404
+        else:
+            for row in rows:
+                column = row.strip().split(", ")
+                customerID = column[0]
+                customerName = column[1]
+                rewardRate = column[2]
+                if "V" in customerID:
+                    discountRate = column[3]
+                    rewards = column[4]
+                else:
+                    discountRate = 0
+                    rewards = column[3]
 
-                    self.customers[customerID] = {"name": customerName, "reward rate": rewardRate,
-                                                  "discount rate": discountRate, "rewards": rewards}
-
-                return self.customers
+                self.customers[customerID] = {"name": customerName, "reward rate": rewardRate,
+                                              "discount rate": discountRate, "rewards": rewards}
+        return self.customers
 
     def read_products(self, file_name):
-        with open(file_name, 'r') as file:
-            rows = file.readlines()
+        try:
+            with open(file_name, 'r') as file:
+                rows = file.readlines()
+        except FileNotFoundError:
+            return 404
 
-            if rows is None:
-                return 404
-            else:
-                for row in rows:
-                    column = row.strip().split(", ")
-                    productID = column[0]
-                    productName = column[1]
-                    productPrice = column[2]
-                    prescription = column[3]
+        if rows is None:
+            return 404
+        else:
+            for row in rows:
+                column = row.strip().split(", ")
+                productID = column[0]
+                productName = column[1]
+                productPrice = column[2]
+                prescription = column[3]
 
-                    self.products[productID] = {"name": productName, "price": productPrice, "prescription": []}
+                if "B" in productID:
+                    bundleItems = []
+                    rowLengthForIndex = len(column)
+                    for i in range(2, rowLengthForIndex):
+                        bundleItems.append(column[i])
 
-                    if prescription == "y":
-                        self.products[productID]["prescription"].append(productName)
+                    self.products[productID] = {"name": productName, "bundle items": bundleItems}
+                else:
+                    self.products[productID] = {"name": productName, "price": productPrice,
+                                                "prescription": prescription}
 
-                return self.products
+            return self.products
 
     def find_customer(self, value):
         if "V" in value or "B" in value:
@@ -161,9 +212,6 @@ class Records:
                                             customer["reward rate"])
 
             return NewCustomer
-
-            # print( "{:<15} {:<20} {:<15} {:<15} {:<10}".format(str(value), customer["name"], str(customer["reward
-            # rate"]), str(customer["discount rate"]), str(customer["rewards"])))
         else:
             for customer_ID, info in self.customers.items():
                 if info["name"] == value:
@@ -179,9 +227,6 @@ class Records:
                         NewCustomer = BasicCustomer(customerID, name, rewards, rewardRate)
 
                     return NewCustomer
-
-                    # print("{:<15} {:<20} {:<15} {:<15} {:<10}".format(str(customerID), name, str(rewardRate),
-                    #                                               str(discountRate), str(rewards)))
 
     def find_product(self, value):
         if len(value) >= 3:
@@ -215,22 +260,46 @@ class Records:
         print('################################')
 
         for product_ID, details in self.products.items():
-            name = details["name"]
-            price = details["price"]
-            print(f'{name.ljust(20)} {str(price).rjust(10)}')
+            if "B" in product_ID:
+                name = details["name"]
+                items = ", ".join(details["bundle items"])
+                print(f'{name.ljust(20)} Bundle items: {items}')
+            else:
+                name = details["name"]
+                price = details["price"]
+                print(f'{name.ljust(20)} {str(price).rjust(10)}')
 
         print('\n')
 
 
 customersDict = {}
 productDict = {}
+ordersDict = {}
 
 
 def display(record):
+    global tempID, customer
     name = 'null'
     prescriptionList = []
+    bundleListInOrder = []
+    bundleList = []
     VIPList = []
     BasicList = []
+    maxKey = 0
+    maxIdNumber = 0
+
+    for key in customersDict.keys():
+        if key.startswith('B') and key[1:].isdigit():
+            number = int(key[1:])
+            if number > maxIdNumber:
+                maxIdNumber = number
+                maxKey = key
+
+    for productID, details in productDict.items():
+        if "B" in productID:
+            bundleList.append(details["name"])
+
+    print(bundleList)
 
     for customerID, details in customersDict.items():
         if "V" in customerID:
@@ -242,14 +311,26 @@ def display(record):
     # print(BasicList)
 
     # saving the products that need a prescription in a list
-    for productID, details in productDict.items():
-        # prescriptionList = details["prescription"]
-        prescriptionList.extend(details["prescription"])
+    for productID in productDict:
+        if "P" in productID:
+            dataDict = productDict[productID]
+            presRequirement = dataDict["prescription"]
+            # print(presRequirement)
+
+            if presRequirement == 'y':
+                prescriptionList.append(dataDict["name"])
+        else:
+            continue
 
     # username validation
     tempName = input('\nEnter the name of the customer or the ID of the customer [e.g. Huong/V3]:')
-    if "V" in tempName or "P" in tempName:
-        pass
+    if "V" in tempName or "B" in tempName:
+        detailsDicTemp = customersDict.get(tempName)
+        if detailsDicTemp is None:
+            print("\nUser not found ..")
+            return
+        else:
+            name = detailsDicTemp.get("name")
     else:
         while 1:
             if tempName.isalpha():
@@ -260,91 +341,201 @@ def display(record):
                 tempName = input('Enter the name of the customer [e.g. Huong]:')
                 continue
 
-        if name in VIPList:
-            VCustomer = record.find_customer(name)
-            customer = VCustomer
-        else:
-            BasCustomer = record.find_customer(name)
-            customer = BasCustomer
+    if name in VIPList:
+        VCustomer = record.find_customer(name)
+        customer = VCustomer
+    elif name in BasicList:
+        BasCustomer = record.find_customer(name)
+        customer = BasCustomer
+    else:
+        print("\ncreating new user ..\n")
+        customersDict[f"B{maxIdNumber}"] = {"name": name, "reward rate": 1, "rewards": 0}
+        customer = BasicCustomer(f"B{maxIdNumber}", name, 0, 1)
 
-        # check whether the name exists in the dictionary
-        # for customerID, details in customersDict.items():
-        #     if name not in details["name"]:
-        #         details["name"] = 0
+    while True:
+        tempProducts = input('Enter the product [enter a valid product only, e.g. vitaminC, coldTablet]: ')
+        tempProductList = [product.strip() for product in tempProducts.split(",")]
 
-        while True:
-            tempProducts = input('Enter the product [enter a valid product only, e.g. vitaminC, coldTablet]: ')
-            tempProductList = [product.strip() for product in tempProducts.split(",")]
+        Valid = True
+        productNameList = []
+        productIDList = []
+        productNameOnlyList = []
 
-            Valid = True
-            productNameList = []
+        for productID, details in productDict.items():
+            productIDList.append(productID)
+            productNameList.append(details["name"])
 
-            for productID, details in productDict.items():
-                productNameList.append(details["name"])
-
-            for tempProduct in tempProductList:
+        for tempProduct in tempProductList:
+            if "B" in tempProduct or "P" in tempProduct:
+                if tempProduct not in productIDList:
+                    print(f'The product {tempProduct} is not valid. Please enter a valid product list.')
+                    Valid = False
+                    break
+            else:
                 if tempProduct not in productNameList:
                     print(f'The product {tempProduct} is not valid. Please enter a valid product list.')
                     Valid = False
                     break
 
-            if Valid:
-                productList = tempProductList
+        if Valid:
+            for tempProduct in tempProductList:
+                if "B" in tempProduct or "P" in tempProduct:
+                    productNameOnlyList.append(productDict[tempProduct]["name"])
+                else:
+                    productNameOnlyList.append(tempProduct)
+
+            productList = productNameOnlyList
+            break
+
+    while True:
+        quantities = input('Enter the quantities [enter positive integers only, e.g. 1, 2, 3, 4]:')
+        tempQuantityList = [quantity.strip() for quantity in quantities.split(",")]
+
+        Valid = True
+
+        for tempQuantity in tempQuantityList:
+            quantity = int(tempQuantity)
+            if quantity < 0 or quantity == 0:
+                print('Enter a valid quantity [quantities cannot be negative or 0]')
+                Valid = False
                 break
+        if Valid:
+            quantityList = tempQuantityList
+            break
 
-        while True:
-            quantities = input('Enter the quantities [enter positive integers only, e.g. 1, 2, 3, 4]:')
-            tempQuantityList = [quantity.strip() for quantity in quantities.split(",")]
+    for pName in productList:
+        for bundleItem in bundleList:
+            if pName == bundleItem:
+                bundleListInOrder.append(pName)
 
-            Valid = True
-
-            for tempQuantity in tempQuantityList:
-                quantity = int(tempQuantity)
-                if quantity < 0 or quantity == 0:
-                    print('Enter a valid quantity [quantities cannot be negative or 0]')
-                    Valid = False
+    for product in productList[:]:
+        if product in prescriptionList:
+            while True:
+                tempAnswer = input(f"The product {product} requires a doctor's prescription, do you have one? (y/n): ")
+                if tempAnswer.lower() == 'n':
+                    # Remove the product and its quantity
+                    index = productList.index(product)
+                    quantityList.pop(index)
+                    productList.remove(product)
                     break
-            if Valid:
-                quantityList = tempQuantityList
-                break
+                elif tempAnswer.lower() == 'y':
+                    break  # Break the while loop if the user has a prescription
+                else:
+                    print("Invalid input. Please enter 'y' or 'n'.")
+                    break
 
-        for product in productList:
-            if product in prescriptionList:
-                while True:
-                    # answer check
-                    tempAnswer = input(f"The product {product} requires a doctor' prescription, do you have one? (y/n): ")
-                    if tempAnswer == 'n':
-                        quantityList.pop(productList.index(product))
-                        productList.remove(product)
-                        break
-                    elif tempAnswer == 'y':
-                        break
-                    else:
-                        print('Invalid input. Please enter either "y" or "n".')
+    # print(bundleListInOrder)
 
-        inputFunc(productList, name, quantityList, customer)
+    inputFunc(productList, name, quantityList, customer)
 
 
-selectionDict = {
-    # 2:manageProducts,
-    # 5:orderHistory
-}
+def searchCustomerOrder():
+    identifierInput = ""
+
+    identifierInput = input('Enter the name of the customer or the ID of the customer [e.g. Huong/V3]: ')
+
+    if identifierInput not in ordersDict:
+        print(f"No order history found for {identifierInput}.")
+        return
+
+    print(f'This is the ordr history of {identifierInput}\n')
+    print("{:<10} {:<30} {:<15} {:<15}".format("Order", "Products", "Total Cost", "Earned Rewards"))
+
+    customer_orders = ordersDict[identifierInput]
+    items = customer_orders['items']
+    total_cost = customer_orders['total']
+    earned_rewards = customer_orders['rewards']
+    product_list = ', '.join([f"{quantity} x {product}" for product, quantity in items.items()])
+
+    print("{:<10} {:<30} {:<15} {:<15}".format("Order 1", product_list, total_cost, earned_rewards))
 
 
 # selection menu for the functions
+def adjustDiscountRateVip():
+    name = ""
+    DiscountRate = 0.0
+
+    tempName = input('\nEnter the name of the customer or the ID of the customer [e.g. Huong/V3]:')
+    if "V" in tempName or "B" in tempName:
+        detailsDicTemp = customersDict[tempName]
+        name = detailsDicTemp.get("name")
+    else:
+        while 1:
+            if tempName.isalpha():
+                name = tempName
+                break
+            else:
+                print('Please enter a valid name or a ID.')
+                tempName = input('Enter the name of the customer [e.g. Huong]:')
+                continue
+
+    def validateRate():
+        while True:
+            try:
+                tempDiscountRate = input('Enter the new discount rate for VIP customer [1 = 100%]: ')
+                discountRate = float(tempDiscountRate)
+
+                if discountRate <= 0:
+                    raise ValueError("Discount rate must be a positive number greater than 0.")
+
+                return discountRate
+
+            except ValueError as e:
+                print(f"Invalid input: {e}. Please try again.")
+
+    DiscountRate = validateRate()
+
+    for customerID, details in customersDict.items():
+        if "V" in customerID and details["name"] == name:
+            customersDict[customerID]["discount rate"] = DiscountRate
+
+
+def displayOrders():
+    print('########################################################################################')
+    print('\t\t\t\t\t\t\t\t\tCustomers')
+    print('########################################################################################')
+
+    print("{:<15} {:<20} {:<15} {:<15} {:<10}".format("Customer ID", "Items", "Total", "Rewards", "DateTime\n"))
+
+    for identifier, info in ordersDict.items():
+        items = ', '.join([f"{k}: {v}" for k, v in info.get("items", {}).items()])
+        total = info["total"]
+        rewards = info["rewards"]
+        dateTime = info["dateTime"]
+
+        print("{:<15} {:<20} {:<15} {:<15} {:<10}".format(str(identifier), items, total, rewards, dateTime))
+
+    print('\n########################################################################################')
+
+
 def menu():
     record = Records()
 
-    if (record.read_customers("customers.txt")) == 404 or (record.read_products("products.txt")) == 404:
-        print("Files not found !!")
+    cusFile = input("Enter the customers file name: ")
+    if not cusFile.strip():
+        cusFile = "customers.txt"
+    prodFile = input("Enter the products file name: ")
+    if not prodFile.strip():
+        prodFile = "products.txt"
+    ordFile = input("Enter the orders file name: ")
+    if not ordFile.strip():
+        ordFile = "orders.txt"
+
+    if (record.read_customers(cusFile)) == 404 or (record.read_products(prodFile)) == 404 or (
+            record.read_orders(ordFile)) == 404:
+        print("\nFiles not found !!")
     else:
+        print("\nDefault values read...\n")
         global productDict
         global customersDict
+        global ordersDict
         productDict = record.read_products("products.txt")
         customersDict = record.read_customers("customers.txt")
+        ordersDict = record.read_orders("orders.txt")
 
-        print(productDict)
-        print(customersDict)
+        # print(productDict)
+        # print(customersDict)
+        # print(ordersDict)
 
         while True:
             # features
@@ -352,139 +543,134 @@ def menu():
             print('###################################################################')
             print('You can choose from the following options:')
             print('1. Make a purchase')
-            # print('2. Add/update information of products')
+            print('2. Add/update information of products')
             print('3. Display existing customers')
             print('4. Display existing products')
-            # print('5. Display a customer order history')
+            print('5. Adjust the discount rate of a VIP customer')
+            print('6. Display all orders')
+            print('7. Search customer orders')
             print('0. Exit the program')
             print('###################################################################')
             option = input('Choose one option: ')
 
+            if option.strip() == "":
+                print('\nInvalid selection.')
+                return
+
             option = int(option)
 
             if option == 0:
+                save_products_to_file(prodFile)
+                save_customers_to_file(cusFile)
+                save_orders_to_file(ordFile)
                 break  # Exit the loop and the program
             elif option == 1:
                 display(record)
+            elif option == 2:
+                manageProducts()
             elif option == 3:
                 record.list_customers()
             elif option == 4:
                 record.list_products()
-            elif option in selectionDict:
-                selectionDict[option]()
+            elif option == 5:
+                adjustDiscountRateVip()
+            elif option == 6:
+                displayOrders()
+            elif option == 7:
+                searchCustomerOrder()
             else:
-                print('Invalid selection.')
-
-            # # order history
-            # orderDict = {
-            #     "Tom": {
-            #         "orders": [
-            #             {
-            #                 "products": {"vitaminC": 1},
-            #                 "total": 12.0,
-            #                 "earnedRewards": 12
-            #             },
-            #             {
-            #                 "products": {"fragrance": 1, "vitaminE": 2},
-            #                 "total": 54.0,
-            #                 "earnedRewards": 54
-            #             },
-            #             {
-            #                 "products": {"coldTablet": 3, "vitaminC": 1},
-            #                 "total": 31.2,
-            #                 "earnedRewards": 31
-            #             }
-            #         ]
-            #     }
-            # }
-            #
-            # # initial customers
-            # customersDict = {
-            #     "Kate": 120,
-            #     "Tom": 32,
-            # }
-            #
-
-            #
-            # # product add/ update
-            # def manageProducts():
-            #     while True:
-            #         productsInput = input(
-            #             "Enter the products, prices, and the doctor's prescription requirements
-            #             [e.g., toothpaste 5.2 n, shampoo 8.2 n]: ")
-            #         productsDataList = [item.strip() for item in productsInput.split(',')]
-            #
-            #         # prices validity
-            #         pricesIsValid = True
-            #
-            #         for productData in productsDataList:
-            #             product, price, prescription = [item.strip() for item in productData.split(' ')]
-            #
-            #             # price validation [price > 0]
-            #             try:
-            #                 price = float(price)
-            #                 if price <= 0:
-            #                     pricesIsValid = False
-            #                     break
-            #             except ValueError:
-            #                 pricesIsValid = False
-            #                 break
-            #
-            #             # prescription requirement validation ['y' or 'n']
-            #             if prescription.lower() not in ['y', 'n']:
-            #                 pricesIsValid = False
-            #                 break
-            #
-            #         prescriptionList = productDict["prescription"]
-            #
-            #         if pricesIsValid:
-            #             for productData in productsDataList:
-            #                 product, price, prescription = [item.strip() for item in productData.split(' ')]
-            #
-            #                 if product in productDict:
-            #                     productDict[product] = price
-            #                     if prescription.lower() == 'y':
-            #                         prescriptionList.append(product)
-            #                 else:
-            #                     productDict[product] = price
-            #                     if prescription.lower() == 'y':
-            #                         prescriptionList.append(product)
-            #
-            #             productDict["prescription"] = prescriptionList
-            #             print("\nInformation updated.\n")
-            #             break
-            #         else:
-            #             print(
-            #                 "\nInvalid input. Valid inputs. [prices should be greater than o and
-            #                 prescription requirement should be 'n' or 'y']")
-            #             continue
-
-            #
-            # def orderHistory():
-            #     # user name input
-            #     name = input("Enter the name of the user: ")
-            #     print(f'\nThis is the order history of {name}')
-            #
-            #     # checking the name given as an input
-            #     if name in orderDict:
-            #         orders = orderDict[name]["orders"]
-            #
-            #         # formatting the history
-            #         print('\t\t\tProducts\t\t\t\t\t\tTotal Cost\t\t\t\tEarned Rewards')
-            #         for i, orderDetails in enumerate(orders, start=1):
-
-            """ productsDisplay = ", ".join([f"{quantity} x {product}" for product, quantity in 
-               orderDetails["products"].items()])
-            print(f"Order {i:<5} {productsDisplay:<31} Total Cost: {orderDetails['total']:<11} Earned Rewards: 
-            {orderDetails['earnedRewards']}")
-           print(f"Order {i} {productsDisplay}, Total Cost: {orderDetails['total']}, Earned Rewards: 
-           {orderDetails['earnedRewards']}") """
+                print('\nInvalid selection.')
 
 
-#     else:
-#         print(f"No order history exists for user - {name}")
-#
-# selection navigation
+def save_products_to_file(file_name):
+    with open(file_name, 'w') as file:
+        for product_id, details in productDict.items():
+            if "price" in details:
+                name = details['name']
+                price = details['price']
+                prescription = details['prescription']
+                line = f"{product_id}, {name}, {price}, {prescription}\n"
+            else:
+                name = details['name']
+                bundle_items = ", ".join(details['bundle items'])
+                line = f"{product_id}, {name}, {bundle_items}\n"
+            file.write(line)
+
+
+def save_orders_to_file(file_name):
+    with open(file_name, 'w') as file:
+        for customer, details in ordersDict.items():
+            items_str = ', '.join([f"{item}, {quantity}" for item, quantity in details['items'].items()])
+            total = details['total']
+            rewards = details['rewards']
+            date_time = details['dateTime']
+            line = f"{customer}, {items_str}, {total}, {rewards}, {date_time}\n"
+            file.write(line)
+
+
+def save_customers_to_file(file_name):
+    with open(file_name, 'w') as file:
+        for customer_id, details in customersDict.items():
+            name = details['name']
+            reward_rate = details['reward rate']
+            discount_rate = details['discount rate']
+            rewards = details['rewards']
+            if discount_rate == 0:
+                line = f"{customer_id}, {name}, {reward_rate}, {rewards}\n"
+            else:
+                line = f"{customer_id}, {name}, {reward_rate}, {discount_rate}, {rewards}\n"
+            file.write(line)
+
+
+def manageProducts():
+    maxIdNumber = 0
+    maxKey = 0
+    product = ""
+    price = 0.00
+    prescription = ""
+
+    for key in productDict.keys():
+        if key.startswith('P') and key[1:].isdigit():
+            number = int(key[1:])
+            if number > maxIdNumber:
+                maxIdNumber = number
+                maxKey = key
+
+    while True:
+        productsInput = input(
+            "Enter the products, prices, and the doctor's prescription requirements [e.g., toothpaste 5.2 n, "
+            "shampoo 8.2 n]: ")
+        productsDataList = [item.strip() for item in productsInput.split(',')]
+
+        def validate_price(priceValidate):
+            try:
+                priceValidate = float(priceValidate)
+                return priceValidate
+            except ValueError:
+                raise ValueError(f"Invalid price: {priceValidate}")
+
+        def validate_prescription(prescriptionValidate):
+            if prescriptionValidate.lower() in ['y', 'n']:
+                return prescriptionValidate.lower()
+            else:
+                raise ValueError(f"Invalid prescription flag: {prescriptionValidate}")
+
+        for productData in productsDataList:
+            productTemp, priceTemp, prescriptionTemp = [item.strip() for item in productData.split(' ')]
+
+            try:
+                product = productTemp
+                price = validate_price(priceTemp)
+                prescription = validate_prescription(prescriptionTemp)
+
+                for productID, details in productDict:
+                    if details["name"] == product:
+                        productDict[productID] = {"name": product, "price": price, "prescription": prescription}
+                    else:
+                        productDict[f"P{maxIdNumber + 1}"] = {"name": product, "price": price,
+                                                              "prescription": prescription}
+            except ValueError as e:
+                print(e)
 
 
 def calcTotal(product, quantity):
@@ -495,31 +681,80 @@ def calcTotal(product, quantity):
             return round(total, 2)
 
 
-def inputFunc(productList, name, quantityList, customer):
+def bundleTotalCalc(bundle):
+    total = 0
     subTotal = 0
-    subTotalFloat = 0.0
+
+    for name, data in bundle.items():
+        products = data["items"]
+
+        for product in products:
+            for productID, details in productDict.items():
+                if "P" in productID:
+                    if product == productID:
+                        total += float(details["price"])
+                    else:
+                        continue
+
+        subTotal = total * data["quantity"]
+
+    return float(subTotal - ((subTotal / 100) * 80))
+
+
+def inputFunc(productList, name, quantityList, customer):
+    current_datetime = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    normTotal = 0
     productStoreNewDict = {}
+    bundleListTemp = {}
+    normalProductList = {}
+    bundleList = {}
+    # print(productList)
+    # print(quantityList)
+
+    product_quantity_dict = {productList[i]: quantityList[i] for i in range(len(productList))}
+
+    for productID, details in productDict.items():
+        for productName in productList:
+            if details["name"] == productName and "B" in productID:
+                bundleListTemp[details["name"]] = {"items": details["bundle items"]}
+
+    # print(bundleListTemp)
+    bundleList = bundleListTemp
 
     print('----------------------------------')
     print('\t\t\tReceipt')
     print('----------------------------------')
+    print(f'Name:\t\t\t\t{name}\n')
 
     for i in range(len(productList)):
         product = str(productList[i])
         quantity = int(quantityList[i])
+        # productStoreNewDict[product] = quantity
 
-        productStoreNewDict[product] = quantity
+        if not bundleListTemp:
+            normalProductList[product] = {"quantity": quantity}
+        else:
+            for name, items in bundleListTemp.items():
+                if product == name:
+                    bundleList[product]["quantity"] = quantity
+                else:
+                    normalProductList[product] = {"quantity": quantity}
 
-        total = calcTotal(product, quantity)
-
-        subTotal += total
-        subTotalFloat = float(subTotal)
-
-        print(f'Name:\t\t\t\t{name}')
         print(f'Product:\t\t\t{product}')
-        # print(f'Unit Price:\t\t\t{productDict[product]} (AUD)')
         print(f'Quantity:\t\t\t{quantity}')
         print("----------------------------------")
+
+    # print(bundleListTemp)
+    # print(normalProductList)
+
+    for normProductName, details in normalProductList.items():
+        normTotal += calcTotal(normProductName, details["quantity"])
+
+    # print(normTotal)
+
+    bundleTotal = bundleTotalCalc(bundleList)
+
+    subTotalFloat = float(normTotal + bundleTotal)
 
     if isinstance(customer, VIPCustomer):
         vipCustomerDiscount = customer.get_discount(subTotalFloat)
@@ -529,34 +764,16 @@ def inputFunc(productList, name, quantityList, customer):
         print(f'Discount:\t\t\t\t{vipCustomerDiscount}')
         print(f'Total cost:\t\t\t\t{subTotalFloat - vipCustomerDiscount} (AUD)')
         print(f'Earned rewards:\t\t\t{vipCustomerRewards}')
+        ordersDict[name] = {"items": product_quantity_dict, "total": subTotalFloat - vipCustomerDiscount,
+                            "rewards": vipCustomerRewards, "dateTime": current_datetime}
     else:
         basicCustomerRewards = customer.get_reward(subTotalFloat)
         print('----------------------------------')
-        print(f'Total cost:\t\t\t{subTotalFloat} (AUD)')
+        formattedSubTotal = f"{subTotalFloat:.2f}"
+        print(f'Total cost:\t\t\t{formattedSubTotal} (AUD)')
         print(f'Earned reward:\t\t{basicCustomerRewards}\n')
+        ordersDict[name] = {"items": product_quantity_dict, "total": formattedSubTotal, "rewards": basicCustomerRewards,
+                            "dateTime": current_datetime}
 
-    # order = {
-    #     "products": productStoreNewDict,
-    #     "total": float(finalAmount),
-    #     "earnedRewards": int(totalRewards)
-    # }
-    #
-    # if name in orderDict:
-    #     orderDict[name]["orders"].append(order)
-    # else:
-    #     orderDict[name] = {"orders": [order]}
-
-
-# # reward points to cash
-# def rewardToCash(name):
-#     rewards = customersDict[name]
-#     if rewards >= 100:
-#         rewardCash = int(rewards/100)*10
-#         customersDict[name] = rewards - (round(rewards/100))*100
-#     else:
-#         rewardCash = rewards
-#
-#     return rewardCash
-#
 
 menu()
